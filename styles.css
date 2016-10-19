@@ -1,0 +1,23 @@
+.report_activity_red {
+    color: darkred;
+    font-weight: bold;
+}
+
+.report_activity_yellow {
+    color: #5c5b00;
+    font-weight: bold;
+}
+
+.report_activity_green {
+    color: darkgreen;
+    font-weight: bold;
+}
+
+.report_activity_gradertable td.cell, .report_activity_gradertable th.header {
+    padding: 1px 0.5em 1px 1em;
+}
+
+.report_activity_reporttable tr.lastrow > td.cell, .report_activity_reporttable th.header {
+    font-weight: bold;
+    background-color: lightgray;
+}
