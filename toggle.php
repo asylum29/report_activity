@@ -15,10 +15,6 @@ $context = context_course::instance($course->id);
 require_capability('report/activity:view', $context);
 require_capability('report/activity:togglevisible', $context);
 
-$url = new moodle_url('/report/activity/toggle.php');
-$url->param($show ? 'show' : 'hide', $id);
-$PAGE->set_url($url);
-
 if ($show && confirm_sesskey()) {
     if (!report_activity_get_modvisible($module)) {
 		report_activity_set_modvisible($module, 1);
