@@ -7,11 +7,6 @@ $show = optional_param('show', 0, PARAM_INT);
 $hide = optional_param('hide', 0, PARAM_INT);
 $id = $show ? $show : $hide;
 
-$url = new moodle_url('/report/activity/index.php');
-$url->param('id', $id);
-
-$PAGE->set_url($url);
-
 list($course, $module) = get_course_and_cm_from_cmid($id);
 if ($module->modname != 'assign' && $module->modname != 'quiz') print_error('error');
 require_login($course);
@@ -19,6 +14,10 @@ require_login($course);
 $context = context_course::instance($course->id);
 require_capability('report/activity:view', $context);
 require_capability('report/activity:togglevisible', $context);
+
+$url = new moodle_url('/report/activity/toggle.php');
+$url->param($show ? 'show' : 'hide', $id);
+$PAGE->set_url($url);
 
 if ($show && confirm_sesskey()) {
     if (!report_activity_get_modvisible($module)) {
