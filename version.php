@@ -24,7 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2016102102;
+$plugin->version   = 2016102900;
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->requires  = 2014051200;
 $plugin->component = 'report_activity';
+
+$plugin->dependencies = array(
+    'mod_assign' => 2016052301,
+    'mod_quiz'   => 2016052300,
+);
