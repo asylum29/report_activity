@@ -56,7 +56,7 @@ $hasstats = $hasgraders = false;
 $toggle = has_capability('report/activity:togglevisible', $context);
 
 $graders = report_activity_get_course_graders($id);
-if ($graders) {
+if (count($graders) > 0) {
 	echo $OUTPUT->heading(get_string('key2', 'report_activity'), 3);
 	
 	$reporttable = report_activity_table::create_table('generaltable report_activity_gradertable', 0);
@@ -88,7 +88,7 @@ $assignstotal = array(
 	'countgrades' => 0
 );
 $assigns = report_activity_get_assign_grades_data($modinfo, $activitygroup, !$toggle);
-if ($assigns) {
+if (count($assigns) > 0) {
 	echo $OUTPUT->heading(get_string('key5', 'report_activity'), 3);
 
 	$reporttable = report_activity_table::create_table('generaltable report_activity_reporttable', 5);
@@ -201,7 +201,7 @@ $quizestotal = array(
 	'countgrades' => 0
 );
 $quizes = report_activity_get_quiz_grades_data($modinfo, $activitygroup, !$toggle);
-if ($quizes) {
+if (count($quizes) > 0) {
 	echo $OUTPUT->heading(get_string('key14', 'report_activity'), 3);
 	
 	$reporttable = report_activity_table::create_table('generaltable report_activity_reporttable', 5);

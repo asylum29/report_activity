@@ -37,14 +37,14 @@ function report_activity_get_last_access_to_course($courseid, $userid) {
 	return $DB->get_field('user_lastaccess', 'timeaccess', array('courseid' => $courseid, 'userid' => $userid));
 }
 
-function report_activity_get_course_graders($courseid) {
+function report_activity_get_course_graders($courseid, $fields = 'u.*') {
 	$context = context_course::instance($courseid);	
-	$graders = get_enrolled_users($context, 'mod/assign:grade', null, 'u.*', null, null, null, true);
+	$graders = get_enrolled_users($context, 'mod/assign:grade', null, $fields, null, null, null, true);
 	foreach ($graders as $grader) {
 		if (!is_enrolled($context, $grader, 'mod/quiz:grade', true))
 			unset($graders[$grader->id]);
 	}
-	return count($graders) > 0 ? $graders : false;
+	return $graders;
 }
 
 function report_activity_get_assign_grades_data($modinfo, $activitygroup, $onlyvisible = false) {
@@ -105,7 +105,7 @@ function report_activity_get_assign_grades_data($modinfo, $activitygroup, $onlyv
 		
 	}
 	
-	return count($result) > 0 ? $result : false;
+	return $result;
 }
 
 function report_activity_get_quiz_grades_data($modinfo, $activitygroup, $onlyvisible = false) {
@@ -144,7 +144,7 @@ function report_activity_get_quiz_grades_data($modinfo, $activitygroup, $onlyvis
 		
 	}
 	
-	return count($result) > 0 ? $result : false;
+	return $result;
 }
 
 function report_activity_set_modvisible($module, $visible) {
