@@ -39,14 +39,14 @@ require_capability('report/activity:togglevisible', $context);
 
 if ($show && confirm_sesskey()) {
     if (!report_activity_get_modvisible($module)) {
-		report_activity_set_modvisible($module, 1);
-		\report_activity\event\report_updated::create(array('context' => $context, 'objectid' => $module->id))->trigger();
-	}
+        report_activity_set_modvisible($module, 1);
+        \report_activity\event\report_updated::create(array('context' => $context, 'objectid' => $module->id))->trigger();
+    }
 } else if ($hide && confirm_sesskey()) {
     if (report_activity_get_modvisible($module)) {
-		report_activity_set_modvisible($module, 0);
-		\report_activity\event\report_updated::create(array('context' => $context, 'objectid' => $module->id))->trigger();
-	}
+        report_activity_set_modvisible($module, 0);
+        \report_activity\event\report_updated::create(array('context' => $context, 'objectid' => $module->id))->trigger();
+    }
 }
 
 $redirecturl = new moodle_url('/report/activity/index.php');

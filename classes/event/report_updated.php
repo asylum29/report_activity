@@ -30,7 +30,7 @@ class report_updated extends \core\event\base {
     protected function init() {
         $this->data['crud'] = 'u';
         $this->data['edulevel'] = self::LEVEL_OTHER;
-		$this->data['objecttable'] = 'report_activity_visibility';
+        $this->data['objecttable'] = 'report_activity_visibility';
     }
 
     public static function get_name() {
@@ -38,7 +38,7 @@ class report_updated extends \core\event\base {
     }
 
     public function get_description() {
-		return "The user with id {$this->userid} had changed visibility of the course module with id {$this->data['objectid']} in the course with id {$this->courseid}.";
+        return "The user with id {$this->userid} had changed visibility of the course module with id {$this->data['objectid']} in the course with id {$this->courseid}.";
     }
 
     public function get_url() {

@@ -33,140 +33,140 @@ require_once($CFG->dirroot.'/mod/quiz/locallib.php');
 /****************************************/
 
 function report_activity_get_last_access_to_course($courseid, $userid) {
-	global $DB;
-	
-	return $DB->get_field('user_lastaccess', 'timeaccess', array('courseid' => $courseid, 'userid' => $userid));
+    global $DB;
+    
+    return $DB->get_field('user_lastaccess', 'timeaccess', array('courseid' => $courseid, 'userid' => $userid));
 }
 
 function report_activity_get_course_graders($courseid, $fields = 'u.*') {
-	$context = context_course::instance($courseid);	
-	$graders = get_enrolled_users($context, 'mod/assign:grade', null, $fields, null, null, null, true);
-	foreach ($graders as $grader) {
-		if (!is_enrolled($context, $grader, 'mod/quiz:grade', true))
-			unset($graders[$grader->id]);
-	}
-	return $graders;
+    $context = context_course::instance($courseid);	
+    $graders = get_enrolled_users($context, 'mod/assign:grade', null, $fields, null, null, null, true);
+    foreach ($graders as $grader) {
+        if (!is_enrolled($context, $grader, 'mod/quiz:grade', true))
+            unset($graders[$grader->id]);
+    }
+    return $graders;
 }
 
 function report_activity_get_assign_grades_data($modinfo, $activitygroup, $onlyvisible = false) {
-	global $DB;
+    global $DB;
+    
+    $modules = $modinfo->get_instances_of('assign');
+    $course = $modinfo->get_course();
+    
+    $result = array();
+    
+    foreach ($modules as $module) {
+        
+        $visible = report_activity_get_modvisible($module);
+        if ($onlyvisible && !$visible) continue;
+        $cm = context_module::instance($module->id);
+        $assign = new assign($cm, $module, $course);
+        $instance = $assign->get_instance();
+        $moddata = new stdClass();
+        
+        $moddata->name = $module->name;
+        $moddata->teamsubmission = $instance->teamsubmission;
+        $moddata->nograde = $instance->grade == 0;
+        $moddata->modvisible = $visible;
+        $moddata->visible = has_capability('mod/assign:view', $cm);
+        
+        if ($instance->teamsubmission) { // расчет по правилам Moodle
+            $moddata->participants = $assign->count_teams($activitygroup);
+            $moddata->submitted = $assign->count_submissions_with_status(ASSIGN_SUBMISSION_STATUS_DRAFT) +
+                                  $assign->count_submissions_with_status(ASSIGN_SUBMISSION_STATUS_SUBMITTED);
+            $moddata->need_grading = $assign->count_submissions_need_grading();
+        } else { // расчет по собственным правилам
+            list($esql, $uparams) = get_enrolled_sql($cm, 'mod/assign:submit', $activitygroup, 'u.*', null, null, null, true);
+            $info = new \core_availability\info_module($module);
+            list($fsql, $fparams) = $info->get_user_list_sql(true);
+            if ($fsql) $uparams = array_merge($uparams, $fparams);
+            $psql = "SELECT COUNT(*) FROM {user} u JOIN ($esql) e ON u.id = e.id " . ($fsql ? "JOIN ($fsql) f ON u.id = f.id" : "");
+            $moddata->participants = $DB->count_records_sql($psql, $uparams);
+            
+            $select = "SELECT COUNT(DISTINCT(s.userid)) ";
+            $table = "FROM {assign_submission} s ";
+            $ujoin = "JOIN ($esql) e ON s.userid = e.id " . ($fsql ? "JOIN ($fsql) f ON s.userid = f.id " : "");
+            $where = "WHERE s.assignment = :assign AND s.timemodified IS NOT NULL AND (s.status = :stat1 OR s.status = :stat2) ";
+            $sparams = array(
+                'assign' => $module->instance,
+                'stat1'  => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+                'stat2'  => ASSIGN_SUBMISSION_STATUS_DRAFT
+            );
+            $sparams = array_merge($sparams, $uparams);
+            $moddata->submitted = $DB->count_records_sql($select . $table . $ujoin . $where, $sparams);
+            
+            $select = "SELECT COUNT(s.userid) ";
+            $gjoin = "LEFT JOIN {assign_grades} g ON s.assignment = g.assignment AND s.userid = g.userid AND g.attemptnumber = s.attemptnumber ";
+            $where .= "AND s.latest = 1 AND (s.timemodified >= g.timemodified OR g.timemodified IS NULL OR g.grade IS NULL)";
+            $moddata->need_grading = $DB->count_records_sql($select . $table . $ujoin . $gjoin . $where, $sparams);
+        }
+        
+        $result[$module->id] = $moddata;
+        
+    }
 
-	$modules = $modinfo->get_instances_of('assign');
-	$course = $modinfo->get_course();
-	
-	$result = array();
-	
-	foreach ($modules as $module) {
-		
-		$visible = report_activity_get_modvisible($module);
-		if ($onlyvisible && !$visible) continue;
-		$cm = context_module::instance($module->id);
-		$assign = new assign($cm, $module, $course);
-		$instance = $assign->get_instance();
-		$moddata = new stdClass();
-		
-		$moddata->name = $module->name;
-		$moddata->teamsubmission = $instance->teamsubmission;
-		$moddata->nograde = $instance->grade == 0;
-		$moddata->modvisible = $visible;
-		$moddata->visible = has_capability('mod/assign:view', $cm);
-		
-		if ($instance->teamsubmission) { // расчет по правилам Moodle
-			$moddata->participants = $assign->count_teams($activitygroup);
-			$moddata->submitted = $assign->count_submissions_with_status(ASSIGN_SUBMISSION_STATUS_DRAFT) +
-								  $assign->count_submissions_with_status(ASSIGN_SUBMISSION_STATUS_SUBMITTED);
-			$moddata->need_grading = $assign->count_submissions_need_grading();
-		} else { // расчет по собственным правилам
-			list($esql, $uparams) = get_enrolled_sql($cm, 'mod/assign:submit', $activitygroup, 'u.*', null, null, null, true);
-			$info = new \core_availability\info_module($module);
-			list($fsql, $fparams) = $info->get_user_list_sql(true);
-			if ($fsql) $uparams = array_merge($uparams, $fparams);
-			$psql = "SELECT COUNT(*) FROM {user} u JOIN ($esql) e ON u.id = e.id " . ($fsql ? "JOIN ($fsql) f ON u.id = f.id" : "");
-			$moddata->participants = $DB->count_records_sql($psql, $uparams);
-			
-			$select = "SELECT COUNT(DISTINCT(s.userid)) ";
-			$table = "FROM {assign_submission} s ";
-			$ujoin = "JOIN ($esql) e ON s.userid = e.id " . ($fsql ? "JOIN ($fsql) f ON s.userid = f.id " : "");
-			$where = "WHERE s.assignment = :assign AND s.timemodified IS NOT NULL AND (s.status = :stat1 OR s.status = :stat2) ";
-			$sparams = array(
-				'assign' => $module->instance,
-				'stat1'  => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
-				'stat2'  => ASSIGN_SUBMISSION_STATUS_DRAFT
-			);
-			$sparams = array_merge($sparams, $uparams);
-			$moddata->submitted = $DB->count_records_sql($select . $table . $ujoin . $where, $sparams);
-			
-			$select = "SELECT COUNT(s.userid) ";
-			$gjoin = "LEFT JOIN {assign_grades} g ON s.assignment = g.assignment AND s.userid = g.userid AND g.attemptnumber = s.attemptnumber ";
-			$where .= "AND s.latest = 1 AND (s.timemodified >= g.timemodified OR g.timemodified IS NULL OR g.grade IS NULL)";
-			$moddata->need_grading = $DB->count_records_sql($select . $table . $ujoin . $gjoin . $where, $sparams);
-		}
-		
-		$result[$module->id] = $moddata;
-		
-	}
-	
-	return $result;
+    return $result;
 }
 
 function report_activity_get_quiz_grades_data($modinfo, $activitygroup, $onlyvisible = false) {
-	global $DB;
+    global $DB;
 
-	$modules = $modinfo->get_instances_of('quiz');
-	
-	$result = array();
-	
-	foreach ($modules as $module) {
-	
-		$visible = report_activity_get_modvisible($module);
-		if ($onlyvisible && !$visible) continue;
-		$cm = context_module::instance($module->id);
+    $modules = $modinfo->get_instances_of('quiz');
+
+    $result = array();
+
+    foreach ($modules as $module) {
+
+        $visible = report_activity_get_modvisible($module);
+        if ($onlyvisible && !$visible) continue;
+        $cm = context_module::instance($module->id);
         $quiz = quiz::create($module->instance);
-		$moddata = new stdClass();
-		
-		$moddata->name = $module->name;
+        $moddata = new stdClass();
+        
+        $moddata->name = $module->name;
         $moddata->noquestions = !$quiz->has_questions();
-		$moddata->modvisible = $visible;
-		$moddata->visible = has_capability('mod/quiz:view', $cm);
+        $moddata->modvisible = $visible;
+        $moddata->visible = has_capability('mod/quiz:view', $cm);
 
-		list($esql, $uparams) = get_enrolled_sql($cm, 'mod/quiz:attempt', $activitygroup, 'u.*', null, null, null, true);
-		$info = new \core_availability\info_module($module);
-		list($fsql, $fparams) = $info->get_user_list_sql(true);
-		if ($fsql) $uparams = array_merge($uparams, $fparams);
-		$psql = "SELECT COUNT(*) FROM {user} u JOIN ($esql) e ON u.id = e.id " . ($fsql ? "JOIN ($fsql) f ON u.id = f.id" : "");
-		$moddata->countusers = $DB->count_records_sql($psql, $uparams);
-		
-		$select = "SELECT COUNT(qg.id) ";
-		$table = "FROM {quiz_grades} qg ";
-		$ujoin = "JOIN ($esql) e ON qg.userid = e.id " . ($fsql ? "JOIN ($fsql) f ON qg.userid = f.id " : "");
-		$where = "WHERE qg.quiz = :quiz";
-		$qparams = array_merge(array('quiz' => $module->instance), $uparams);
-		$moddata->countgrades = $DB->count_records_sql($select . $table . $ujoin . $where, $qparams);
+        list($esql, $uparams) = get_enrolled_sql($cm, 'mod/quiz:attempt', $activitygroup, 'u.*', null, null, null, true);
+        $info = new \core_availability\info_module($module);
+        list($fsql, $fparams) = $info->get_user_list_sql(true);
+        if ($fsql) $uparams = array_merge($uparams, $fparams);
+        $psql = "SELECT COUNT(*) FROM {user} u JOIN ($esql) e ON u.id = e.id " . ($fsql ? "JOIN ($fsql) f ON u.id = f.id" : "");
+        $moddata->countusers = $DB->count_records_sql($psql, $uparams);
+        
+        $select = "SELECT COUNT(qg.id) ";
+        $table = "FROM {quiz_grades} qg ";
+        $ujoin = "JOIN ($esql) e ON qg.userid = e.id " . ($fsql ? "JOIN ($fsql) f ON qg.userid = f.id " : "");
+        $where = "WHERE qg.quiz = :quiz";
+        $qparams = array_merge(array('quiz' => $module->instance), $uparams);
+        $moddata->countgrades = $DB->count_records_sql($select . $table . $ujoin . $where, $qparams);
 
-		$result[$module->id] = $moddata;
-		
-	}
-	
-	return $result;
+        $result[$module->id] = $moddata;
+        
+    }
+
+    return $result;
 }
 
 function report_activity_set_modvisible($module, $visible) {
-	global $DB;
-	
-	$count = $DB->count_records('report_activity_visibility', array('moduleid' => $module->id));
-	if ($count > 0) {
-		$DB->set_field('report_activity_visibility', 'visible', $visible, array('moduleid' => $module->id));
-	} else {
-		$DB->execute('INSERT INTO {report_activity_visibility} (courseid, moduleid, visible) VALUES (?, ?, ?)', array($module->course, $module->id, $visible));
-	}
+    global $DB;
+
+    $count = $DB->count_records('report_activity_visibility', array('moduleid' => $module->id));
+    if ($count > 0) {
+        $DB->set_field('report_activity_visibility', 'visible', $visible, array('moduleid' => $module->id));
+    } else {
+        $DB->execute('INSERT INTO {report_activity_visibility} (courseid, moduleid, visible) VALUES (?, ?, ?)', array($module->course, $module->id, $visible));
+    }
 }
 
 function report_activity_get_modvisible($module) {
-	global $DB;
-	
-	$record = $DB->get_record('report_activity_visibility', array('moduleid' => $module->id));
-	
-	return !$record ? $module->visible : $record->visible;
+    global $DB;
+
+    $record = $DB->get_record('report_activity_visibility', array('moduleid' => $module->id));
+
+    return !$record ? $module->visible : $record->visible;
 }
 
 /******************************************/
@@ -174,40 +174,40 @@ function report_activity_get_modvisible($module) {
 /******************************************/
 
 function report_activity_percentformat_value($value, $color = true) {
-	$class = '';
-	if ($color) {
-		if ($value < 50) {
-			$class = 'report_activity_red';
-		} else if ($value < 85) {
-			$class = 'report_activity_yellow';
-		} else {
-			$class = 'report_activity_green';
-		}
-	}
-	return html_writer::start_span($class) . format_float($value, 2, true, true) . '%' . html_writer::end_span();
+    $class = '';
+    if ($color) {
+        if ($value < 50) {
+            $class = 'report_activity_red';
+        } else if ($value < 85) {
+            $class = 'report_activity_yellow';
+        } else {
+            $class = 'report_activity_green';
+        }
+    }
+    return html_writer::start_span($class) . format_float($value, 2, true, true) . '%' . html_writer::end_span();
 }
 
 class report_activity_table {
 
-	public static function create_table($class = 'table', $cellpadding = 5) {
-		$table = new html_table();
-		$table->attributes['class'] = $class;
-		$table->cellpadding = $cellpadding;
-		return $table;
-	}
-	
-	public static function create_cell($content, $class = '') {
-		$cell = new html_table_cell();
-		$cell->attributes['class'] = $class;
-		$cell->text = $content;
-		return $cell;
-	}
-	
-	public static function create_row($cells, $class = '') {
-		$row = new html_table_row();
-		$row->attributes['class'] = $class;
-		$row->cells = $cells;
-		return $row;
-	}
-	
+    public static function create_table($class = 'table', $cellpadding = 5) {
+        $table = new html_table();
+        $table->attributes['class'] = $class;
+        $table->cellpadding = $cellpadding;
+        return $table;
+    }
+
+    public static function create_cell($content, $class = '') {
+        $cell = new html_table_cell();
+        $cell->attributes['class'] = $class;
+        $cell->text = $content;
+        return $cell;
+    }
+
+    public static function create_row($cells, $class = '') {
+        $row = new html_table_row();
+        $row->attributes['class'] = $class;
+        $row->cells = $cells;
+        return $row;
+    }
+
 }

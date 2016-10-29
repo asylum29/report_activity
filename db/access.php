@@ -36,10 +36,10 @@ $capabilities = array(
             'manager' 		 => CAP_ALLOW
         )
     ),
-	
-	'report/activity:togglevisible' => array(
-		'captype' 	   => 'write',
+
+    'report/activity:togglevisible' => array(
+        'captype' 	   => 'write',
         'contextlevel' => CONTEXT_COURSE
-	)
-	
+    )
+
 );
