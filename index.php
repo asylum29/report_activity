@@ -226,6 +226,8 @@ if (count($quizes) > 0) {
 			$icon = $OUTPUT->pix_icon("t/$showhide", get_string($showhide), '', array('class' => 'iconsmall'));
 			$content .= html_writer::link($toggleurl, $icon);
 		}
+        if ($quiz->noquestions)
+            $content .= $OUTPUT->pix_icon('noquestions', get_string('key23', 'report_activity'), 'report_activity', array('class' => 'iconsmall'));
 		$reportcells[] = report_activity_table::create_cell($content);
 		
 		$reportcells[] = report_activity_table::create_cell($quiz->countusers);

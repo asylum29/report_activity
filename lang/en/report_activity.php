@@ -47,3 +47,4 @@ $string['key19'] = 'Course activity efficient: {$a}';
 $string['key20'] = 'Group mode'; 
 $string['key21'] = 'No grade'; 
 $string['key22'] = 'Report «Course activity» was changed';
+$string['key23'] = 'No questions';

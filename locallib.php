@@ -26,6 +26,7 @@ defined('MOODLE_INTERNAL') || die;
 
 require_once(dirname(__FILE__).'/lib.php');
 require_once($CFG->dirroot.'/mod/assign/locallib.php');
+require_once($CFG->dirroot.'/mod/quiz/locallib.php');
 
 /****************************************/
 /***************Public API***************/
@@ -119,10 +120,12 @@ function report_activity_get_quiz_grades_data($modinfo, $activitygroup, $onlyvis
 	
 		$visible = report_activity_get_modvisible($module);
 		if ($onlyvisible && !$visible) continue;
-		$cm = context_module::instance($module->id);		
+		$cm = context_module::instance($module->id);
+        $quiz = quiz::create($module->instance);
 		$moddata = new stdClass();
 		
 		$moddata->name = $module->name;
+        $moddata->noquestions = !$quiz->has_questions();
 		$moddata->modvisible = $visible;
 		$moddata->visible = has_capability('mod/quiz:view', $cm);
 
